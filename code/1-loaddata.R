@@ -84,6 +84,28 @@ household$arrival.document[household$arrival.document == "onlyUNHCR  المفو�
 
 table(household$arrival.document)
 
+## Clean Unique forms ########
+
+
+
+### Add weights ###############################
+library(readxl)
+poids <- read_excel("data/poids.xlsx")
+names(poids)
+names(poids)[2] <- "case_reachable.caseid"
+names(household)
+
+nrow(poids)
+nrow(as.data.frame(unique(poids$case_reachable.caseid)))
+
+nrow(household)
+nrow(as.data.frame(unique(household$case_reachable.caseid)))
+
+View(household[ ,c("case_reachable.caseid")])
+
+
+household.test <- merge(x=household, y = poids, by = "case_reachable.caseid", all.y = TRUE)
+
 ## Re-encoding data now based on the dictionnary -- ##############################
 ## the xlsform dictionnary can be adjusted this script re-runned till satisfaction
 cat("\n\n\n Now  re-encode data  \n\n\n\n")
