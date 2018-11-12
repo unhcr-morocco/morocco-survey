@@ -85,26 +85,133 @@ household$arrival.document[household$arrival.document == "onlyUNHCR  المفو�
 table(household$arrival.document)
 
 ## Clean Unique forms ########
+library(readxl)
+base <- read_excel("data/base.xlsx")
+
+#names(base)
+#View(base[ ,c("weight", "_id", "_uuid" ,  "_submission_time", "_index" )])
+
+#names(household)
+
+## using metadata column for the merge
+
+baseclean <- base[ ,c(  "_uuid" ,  "weight",  "N° du ménage", "N° Individuel"   )]
+#need to rename the column
+#names(baseclean)[1] <- "X_id"
+#names(baseclean)[3] <- "X_submission_time"
+#names(baseclean)[4] <- "X_index"
 
 
+names(baseclean)[1] <- "X_uuid"
+names(baseclean)[3] <- "case_reachable.caseid2"
+names(baseclean)[4] <- "Individualid"
+
+baseclean$caseidconcat <- paste0(baseclean$case_reachable.caseid2, baseclean$Individualid)
+
+nrow(baseclean)
+nrow(as.data.frame(unique(baseclean$case_reachable.caseid2)))
+nrow(as.data.frame(unique(baseclean$Individualid)))
+nrow(as.data.frame(unique(baseclean$caseidconcat)))
+
+#household.remove <- merge(x = baseclean, y = household, by = "X_uuid" , all.y = TRUE)
+#household.remove <- household.remove[is.na(household.remove$case_reachable.caseid2), ]
+household2 <- merge(x = baseclean, y = household, by = "X_uuid", all.x = TRUE)
+
+nrow(household2)
+
+household22 <- household2[ !(is.na(household2$case_reachable.caseid2)), ]
+
+nrow(as.data.frame(unique(household22$case_reachable.caseid2)))
+
+
+
+household22$caseidconcatrelation <- paste0(household22$case_reachable.caseid2, household22$sociodemo.relationship)
+nrow(as.data.frame(unique(household22$caseidconcatrelation)))
+
+household22$duplicated <- ""
+household22[duplicated(household22$caseidconcatrelation ), c( "duplicated") ] <- "duplicated"
+
+table(household22$duplicated)
+
+## Check if we have differnet head of household
+
+
+###########
+library(haven)
+data_weight <- read_dta("data/data_weight.dta")
+data_weight <- as.data.frame(data_weight)
+names(data_weight)
+View(data_weight[ , c("n_dum_nage",  "individual_number" )])
+
+data_weight$caseidconcat <- paste0(data_weight$n_dum_nage, data_weight$individual_number)
+
+nrow(data_weight)
+nrow(as.data.frame(unique(data_weight$n_dum_nage)))
+nrow(as.data.frame(unique(data_weight$individual_number)))
+nrow(as.data.frame(unique(data_weight$caseidconcat)))
+
+### does not match.... some id are NA
 
 ### Add weights ###############################
-library(readxl)
+
 poids <- read_excel("data/poids.xlsx")
 names(poids)
-names(poids)[2] <- "case_reachable.caseid"
-names(household)
+names(poids)[2] <- "Caseid"
+names(poids)[3] <- "Individualid"
+names(poids)[19] <- "poidsnormalise1"
+names(poids)[20] <- "poidsnormalise2"
+names(poids)
+
+poids$caseidconcat <- paste0(poids$Caseid, poids$Individualid)
+
 
 nrow(poids)
-nrow(as.data.frame(unique(poids$case_reachable.caseid)))
-
-nrow(household)
-nrow(as.data.frame(unique(household$case_reachable.caseid)))
-
-View(household[ ,c("case_reachable.caseid")])
+nrow(as.data.frame(unique(poids$Caseid)))
+nrow(as.data.frame(unique(poids$Individualid)))
+nrow(as.data.frame(unique(poids$caseidconcat)))
 
 
-household.test <- merge(x=household, y = poids, by = "case_reachable.caseid", all.y = TRUE)
+#View(poids[ is.na(poids$Individualid),c("caseidconcat") ])
+## We Case with empty case id...
+poids2 <- poids[ !(is.na(poids$Individualid)), c("Caseid", "Individualid",
+                                                "poids1",  "poids2", "poidsnormalise1", "poidsnormalise2",  "Weight")  ]
+str(poids2)
+
+poids2$poids1 <- as.numeric(poids2$poids1)
+poids2$poids2 <- as.numeric(poids2$poids2)
+poids2$poidsnormalise1 <- as.numeric(poids2$poidsnormalise1)
+poids2$poidsnormalise2 <- as.numeric(poids2$poidsnormalise2)
+poids2$Weight <- as.numeric(poids2$Weight)
+
+sum(poids2$Weight)
+sum(poids2$poids1)
+sum(poids2$poids2)
+sum(poids2$poidsnormalise1)
+sum(poids2$poidsnormalise2)
+
+#View(poids2[ is.na(poids2$Caseid), ])
+
+## Now merging back with household to get all caseID
+
+household3 <- merge(x = household2, y = poids2, by = "Individualid", all.x = TRUE)
+
+#View(household3[ is.na(household3$Caseid) | is.na(household3$case_reachable.caseid2) ,c("Caseid", "case_reachable.caseid2", "case_reachable.caseid") ])
+
+View(household3[ ,c("Caseid", "case_reachable.caseid2", "case_reachable.caseid", "weight","Weight") ])
+
+str(household3$weight)
+sum(household3$weight)
+
+str(household3$weight)
+sum(household3$Weight)
+
+nrow(household3)
+nrow(as.data.frame(unique(household3$case_reachable.caseid2)))
+nrow(as.data.frame(unique(household3$Caseid)))
+
+
+
+nrow(as.data.frame(unique(household3$case_reachable.caseid2)))
 
 ## Re-encoding data now based on the dictionnary -- ##############################
 ## the xlsform dictionnary can be adjusted this script re-runned till satisfaction
