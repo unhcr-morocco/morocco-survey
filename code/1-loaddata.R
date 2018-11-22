@@ -75,10 +75,10 @@ write.csv(household,"data/household.csv", row.names = FALSE, na = "")
 
 ## Compute indicators if defined ##################################################
 #source("code/2-create-indicators.R")
-names(household)
-summary(household$arrival.document)
-table(household$arrival.document)
-levels(household$arrival.document)
+#names(household)
+#summary(household$arrival.document)
+#table(household$arrival.document)
+#levels(household$arrival.document)
 household$arrival.document <- as.character(household$arrival.document)
 household$arrival.document[household$arrival.document == "onlyUNHCR  المفوضية فقط" ] <- "onlyUNHCR"
 
@@ -96,7 +96,7 @@ base <- read_excel("data/base2.xlsx")
 
 ## using metadata column for the merge
 
-baseclean <- base[ ,c(  "_uuid" ,  "weight",  "N° du ménage", "N° Individuel"   )]
+baseclean <- base[ ,c(  "_uuid" ,  "weight",  "N° du ménage", "N° Individuel", "Chef de ménage"   )]
 #need to rename the column
 #names(baseclean)[1] <- "X_id"
 #names(baseclean)[3] <- "X_submission_time"
@@ -106,6 +106,9 @@ baseclean <- base[ ,c(  "_uuid" ,  "weight",  "N° du ménage", "N° Individuel"
 names(baseclean)[1] <- "X_uuid"
 names(baseclean)[3] <- "case_reachable.caseid2"
 names(baseclean)[4] <- "Individualid"
+names(baseclean)[5] <- "HeadHousehold"
+
+table(baseclean$HeadHousehold)
 
 baseclean$caseidconcat <- paste0(baseclean$case_reachable.caseid2, baseclean$Individualid)
 
@@ -135,7 +138,7 @@ table(household2$duplicatedid)
 ## Check if we have differnet head of household
 
 
-data <- household2[ household2$duplicatedid != "duplicated", ]
+data <- household2[ household2$duplicatedid != "duplicated" & household2$HeadHousehold == "Oui", ]
 
 ######## load extract from proGres for poststratification\
 
@@ -207,7 +210,7 @@ n <- nrow(data)
 
 universe$CountryOrigin2 <- car::recode(universe$CountryOrigin,"'SYR'='Syria';
                                   'IRQ'='Iraq';
-                                  'PAL'='Palestine';
+                                  'PAL'='Other';
                                   'ICO'='Cote Ivoire';
                                   'COD'='Congo RDC';
                                   'CMR'='Cameroun';
@@ -258,7 +261,7 @@ universe$CountryOrigin2 <- car::recode(universe$CountryOrigin,"'SYR'='Syria';
 
 data$CountryOrigin2 <- car::recode(data$CountryOrigin,"'SYR'='Syria';
                                   'IRQ'='Iraq';
-                                   'PAL'='Palestine';
+                                   'PAL'='Other';
                                    'ICO'='Cote Ivoire';
                                    'COD'='Congo RDC';
                                    'CMR'='Cameroun';
@@ -347,92 +350,144 @@ universe$Case.size2 <- car::recode(universe$Case.size,"'Case.size.2'='Case.size.
 
 prop.table(table(universe$Case.size2, useNA = "ifany"))
 
-data$key2 <- paste(data$CountryOrigin2,data$Case.size2,sep = "-")
-universe$key2 <- paste(universe$CountryOrigin2,universe$Case.size2,sep = "-")
 
+
+
+
+################################
+cat("create the unweighted survey object\n")
+## create the unweighted survey object  ####
+data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
+
+## Post stratify on those relative frequency
+## Use post-stratify
+#postStratify(design, strata, population, partial = FALSE, ...)
+## strata           A formula or data frame of post-stratifying variables
+## population       A table, xtabs or data.frame with population frequencies
+## partial          if TRUE, ignore population strata not present in the sample
+## sometimes it is necessary to trim weights, if they have grown too large or too small.
+## This will make your data fit less well the population marginal distributions,
+## but inflating a few cases to too much weight, is rarely ever sensible:
+## Perhaps that one person that now counts as 50 is somewhat deranged, or otherwise not representative.
+# So it is best to keep an eye on your weights.
+
+
+
+
+cat("post stratification only on ctr of Origin\n")
+####################
+universe.CountryOrigin2 <- table(CountryOrigin2 = universe$CountryOrigin2)
+CountryOrigin2 <- levels(as.factor(data$CountryOrigin2))
+
+## Try post stratification only on ctr of Origin
+data.svy.rake.ctr <- rake(
+  design = data.svy.unweighted,
+  sample.margins = list( ~ CountryOrigin2),
+  population.margins = list(universe.CountryOrigin2)
+)
+
+summary(weights(data.svy.rake.ctr))
+data.svy.rake.ctr.trim <- trimWeights(data.svy.rake.ctr,
+                                      lower = 0.3,
+                                      upper = 3,
+                                      strict = TRUE)
+
+
+cat("post stratification only on ctr of Origin & Gender of PA\n")
+####################
+data$key <- paste(data$CountryOrigin2,data$dem_sex,sep = "-")
+prop.table(table(data$key, useNA = "ifany"))
+
+universe$key <- paste(universe$CountryOrigin2,universe$dem_sex,sep = "-")
+prop.table(table(universe$key, useNA = "ifany"))
+
+universe.key <- table(key = universe$key)
+key <- levels(as.factor(data$key))
+
+## Try post stratification only on ctr of Origin
+data.svy.rake.ctr.gender <- rake(
+  design = data.svy.unweighted,
+  sample.margins = list( ~ key),
+  population.margins = list(universe.key)
+)
+
+summary(weights(data.svy.rake.ctr.gender))
+data.svy.rake.ctr.gender.trim <- trimWeights(data.svy.rake.ctr,
+                                      lower = 0.3,
+                                      upper = 3,
+                                      strict = TRUE)
+
+
+#################
+data$key2 <- paste(data$CountryOrigin2,data$Case.size2,sep = "-")
 prop.table(table(data$key2, useNA = "ifany"))
+
+universe$key2 <- paste(universe$CountryOrigin2,universe$Case.size2,sep = "-")
 prop.table(table(universe$key2, useNA = "ifany"))
 
 
-data$stratum <- paste(data$CountryOrigin2, data$coal2, data$dem_sex, sep = "/")
-universe$stratum <- paste(universe$CountryOrigin2, universe$coal2, universe$dem_sex, sep = "/")
-
-prop.table(table(data$stratum, useNA = "ifany"))
-prop.table(table(universe$stratum, useNA = "ifany"))
+test <- merge(x= as.data.frame(table(key = universe$key2) ) , y = as.data.frame(table(key = data$key2)) , by ="key", all.x = TRUE)
 
 
+## Rework the key
+data$key2[data$key2 == "Cote Ivoire-Case.size.6.and.more"] <- "Cote Ivoire-Case.size.2.and.more"
+data$key2[data$key2 == "Cote Ivoire-Case.size.2.to.5"] <- "Cote Ivoire-Case.size.2.and.more"
 
-### reference table for post-stratification
+data$key2[data$key2 == "Guinea-Case.size.6.and.more"] <- "Guinea-Case.size.2.and.more"
+data$key2[data$key2 == "Guinea-Case.size.2.to.5"] <- "Guinea-Case.size.2.and.more"
 
-universe.ctr <- as.data.frame(table(universe$CountryOrigin2))
-names(universe.ctr)[1] <- "CountryOrigin2"
-ctr <- levels(as.factor(data$CountryOrigin2))
+data$key2[data$key2 == "Mali-Case.size.1"] <- "Mali"
+data$key2[data$key2 == "Mali-Case.size.2.to.5"] <- "Mali"
+
+universe$key2[universe$key2 == "Cote Ivoire-Case.size.6.and.more"] <- "Cote Ivoire-Case.size.2.and.more"
+universe$key2[universe$key2 == "Cote Ivoire-Case.size.2.to.5"] <- "Cote Ivoire-Case.size.2.and.more"
+
+universe$key2[universe$key2 == "Guinea-Case.size.6.and.more"] <- "Guinea-Case.size.2.and.more"
+universe$key2[universe$key2 == "Guinea-Case.size.2.to.5"] <- "Guinea-Case.size.2.and.more"
+
+universe$key2[universe$key2 == "Mali-Case.size.1"] <- "Mali"
+universe$key2[universe$key2 == "Mali-Case.size.2.to.5"] <- "Mali"
 
 
+data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
 
-universe.stratum <- as.data.frame(table(universe$stratum))
-names(universe.stratum)[1] <- "stratum"
-stratum <- levels(as.factor(data$stratum))
 
-universe.key2 <- as.data.frame(table(universe$key2))
-names(universe.key2)[1] <- "key2"
+universe.key2 <- table(key2 = universe$key2)
 key2 <- levels(as.factor(data$key2))
-
-#data.key2 <- as.data.frame(table(data$key2))
-
-cat("create the unweighted survey object\n")
-## create the unweighted survey object
-data.svy.unweighted <- svydesign(ids =  ~ 1,
-                                 data = data)
-
-## Post stratify on those relative frequency
-
-
-
-cat("post stratification on ctr, area of Origin & case size\n")
-## Try post stratification on ctr, area of Origin & case size
-data.svy.rake.ctr.coo.size <- rake(
+## Try post stratification only on ctr of Origin
+data.svy.rake.ctr.casesize <- rake(
   design = data.svy.unweighted,
-  #partial = TRUE, ## Ignore some strata that are absent from sample
   sample.margins = list( ~ key2),
   population.margins = list(universe.key2)
 )
 
 
 
-cat("post stratification only on ctr of asylum\n")
-## Try post stratification only on ctr of asylum
-data.svy.rake.ctr <- rake(
+cat("post stratification on ctr, area of Origin & case size\n")
+################3
+data$stratum <- paste(data$CountryOrigin2, data$coal2, data$dem_sex, sep = "/")
+prop.table(table(data$stratum, useNA = "ifany"))
+
+universe$stratum <- paste(universe$CountryOrigin2, universe$coal2, universe$dem_sex, sep = "/")
+prop.table(table(universe$stratum, useNA = "ifany"))
+
+universe.stratum <- table(stratum = universe$stratum)
+stratum  <- levels(as.factor(data$stratum ))
+
+## Try post stratification on ctr, area of Origin & case size
+data.svy.rake.ctr.coa.gender <- rake(
   design = data.svy.unweighted,
-  sample.margins = list( ~ ctr),
-  population.margins = list(universe.ctr)
+  sample.margins = list( ~ stratum),
+  population.margins = list(universe.stratum)
 )
 
 
-## Use post-stratify
-#postStratify(design, strata, population, partial = FALSE, ...)
-## strata           A formula or data frame of post-stratifying variables
-## population       A table, xtabs or data.frame with population frequencies
-## partial          if TRUE, ignore population strata not present in the sample
 
 
-## sometimes it is necessary to trim weights, if they have grown too large or too small.
-## This will make your data fit less well the population marginal distributions,
-## but inflating a few cases to too much weight, is rarely ever sensible:
-## Perhaps that one person that now counts as 50 is somewhat deranged, or otherwise not representative.
-# So it is best to keep an eye on your weights.
-summary(weights(data.svy.rake.ctr.coo))
 
-cat("Trim weight for Asylum, Origin\n")
-data.svy.rake.trim <- trimWeights(data.svy.rake.ctr,
-                                  lower = 0.3,
-                                  upper = 3,
-                                  strict = TRUE)
 
-proportion.trim <- svyby(  ~ group_intro.goingback,  by =  ~ ctr+COO_L1,  design = data.svy.rake.trim,  FUN = svymean)
 
-#names(proportion.trim)
-proportion.trim$key <- paste(proportion.trim$ctr,proportion.trim$COO_L1,sep="-")
+
 
 
 ## Get original # from universe
@@ -447,19 +502,13 @@ data.svy.rake.trim2 <- trimWeights(data.svy.rake.ctr.coo.size,
                                    upper = 3,
                                    strict = TRUE)
 
-proportion.trim2 <- svyby(  ~ group_intro.goingback,  by =  ~ ctr+COO_L1+Case.size,  design = data.svy.rake.trim2,  FUN = svymean)
-
-
-
-
-
 
 
 ###########
 library(haven)
 data_weight <- read_dta("data/data_weight.dta")
 data_weight <- as.data.frame(data_weight)
-names(data_weight)
+#names(data_weight)
 View(data_weight[ , c("n_dum_nage",  "individual_number" )])
 
 data_weight$caseidconcat <- paste0(data_weight$n_dum_nage, data_weight$individual_number)
