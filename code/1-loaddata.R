@@ -86,8 +86,9 @@ table(household$arrival.document)
 
 ## Clean Unique forms ########
 library(readxl)
-base <- read_excel("data/base.xlsx")
-
+#base <- read_excel("data/base.xlsx")
+#base <- read_excel("data/base.xlsx")
+base <- read_excel("data/base2.xlsx")
 #names(base)
 #View(base[ ,c("weight", "_id", "_uuid" ,  "_submission_time", "_index" )])
 
@@ -119,21 +120,339 @@ household2 <- merge(x = baseclean, y = household, by = "X_uuid", all.x = TRUE)
 
 nrow(household2)
 
-household22 <- household2[ !(is.na(household2$case_reachable.caseid2)), ]
+household2 <- household2[ !(is.na(household2$case_reachable.caseid2)), ]
+nrow(as.data.frame(unique(household2$case_reachable.caseid2)))
+household2$caseidconcatrelation <- paste0(household2$case_reachable.caseid2, household2$sociodemo.relationship)
+nrow(as.data.frame(unique(household2$caseidconcatrelation)))
 
-nrow(as.data.frame(unique(household22$case_reachable.caseid2)))
+household2$duplicatedidpa <- ""
+household2[duplicated(household2$caseidconcatrelation ), c( "duplicatedidpa") ] <- "duplicated"
+table(household2$duplicatedidpa)
 
-
-
-household22$caseidconcatrelation <- paste0(household22$case_reachable.caseid2, household22$sociodemo.relationship)
-nrow(as.data.frame(unique(household22$caseidconcatrelation)))
-
-household22$duplicated <- ""
-household22[duplicated(household22$caseidconcatrelation ), c( "duplicated") ] <- "duplicated"
-
-table(household22$duplicated)
-
+household2$duplicatedid <- ""
+household2[duplicated(household2$case_reachable.caseid2), c( "duplicatedid") ] <- "duplicated"
+table(household2$duplicatedid)
 ## Check if we have differnet head of household
+
+
+data <- household2[ household2$duplicatedid != "duplicated", ]
+
+######## load extract from proGres for poststratification\
+
+library(survey)
+#################################################################
+## First load the universe
+##loading  case profile from progres
+
+
+#### post stratification of the sample
+
+## cf tuto here: http://www.andrew.cmu.edu/user/jsmurray/teaching/303/files/lab.html
+## https://www.r-bloggers.com/survey-computing-your-own-post-stratification-weights-in-r/
+## http://sdaza.com/survey/2012/08/25/raking/
+
+
+universe <- read.csv("data/casemorocco.csv")
+#names(universe)
+
+universe$case_reachable.caseid2 <- universe$CaseNo
+
+## Merge survey with Universe to get common data for poststratification
+data <- merge(x = data, y = universe, by = "case_reachable.caseid2")
+
+N <- nrow(universe)
+n <- nrow(data)
+
+
+#The survey package provides a survey.design object, which is a container for a dataset and the
+# sampling design information, including sampling scheme, weights, population sizes (and more).
+
+# The svydesign function is used to create survey.design objects.
+# It has a number of arguments, but the most important for you are:
+
+###  ids: Name of variable in the dataframe that contains cluster ids
+##  ids = ~1 means there is no clustering.
+
+###  strata: Names of stratification variables, as a formula: ~var1 + var2 + var3
+## strata = NULL means there was no stratification.
+
+## weights	: Formula or vector specifying sampling weights as an alternative to prob
+# probs: Formula or data frame specifying cluster sampling probabilities
+
+###  fpc (finite population correction) : A vector the same length as the data, giving the stratum population size for each observation.
+##The name is confusing, since you don’t actually supply the finite population correction factor.
+## fpc = rep(N, n): The function call rep(N, n) generates a vector of length n where each entry is
+## N (the population size).
+
+## “Independent sampling design” means that the sampling design is an SRS - Stratified Random Sample.
+## When the population size is specified (via the fpc argument) it is assumed that the SRS is without replacement.
+
+###  data: Dataframe containing the raw survey data
+## data = dat tells svydesign where to find the actual data.
+
+
+
+######################################################################
+## Option 1 - use  weight from the original sampling plan
+## Abandonned because of low response rate
+
+
+######################################################################
+## Option 1 - Doing poststratification
+## We will build 2 stratum - corresponding to the 2 dependent variable to intention as per the chi square test.
+## ctry of Asylum
+## Are of origin
+
+## Relative frequencies for each of these levels from the population data frames
+
+universe$CountryOrigin2 <- car::recode(universe$CountryOrigin,"'SYR'='Syria';
+                                  'IRQ'='Iraq';
+                                  'PAL'='Palestine';
+                                  'ICO'='Cote Ivoire';
+                                  'COD'='Congo RDC';
+                                  'CMR'='Cameroun';
+                                  'MLI'='Mali';
+                                  'GUI'='Guinea';
+                                  'CAR'='Central African Republic';
+                                       'SOM'='Other';
+                                       'AFG'='Other';
+                                       'SUD'='Other';
+                                       'ETH'='Other';
+                                       'ERT'='Other';
+                                       'TUR'='Other';
+                                       'PAK'='Other';
+                                       'YEM'='Yemen';
+                                       'NIG'='Other';
+                                       'BGD'='Other';
+                                       'ARE'='Other';
+                                       'COB'='Other';
+                                       'LBY'='Other';
+                                       'LEB'='Other';
+                                       'CHD'='Other';
+                                       'GBR'='Other';
+                                       'FRA'='Other';
+                                       'JOR'='Other';
+                                       'SEN'='Other';
+                                       'ALG'='Other';
+                                       'GHA'='Other';
+                                       'TUN'='Other';
+                                       'SLE'='Other';
+                                       'LBR'='Other';
+                                       'CHI'='Other';
+                                       'BDI'='Other';
+                                       'MYA'='Other';
+                                       'TOG'='Other';
+                                       'GAM'='Other';
+                                       'NGR'='Other';
+                                       'ANG'='Other';
+                                       'BKF'='Other';
+                                       'BEN'='Other';
+                                       'GAB'='Other';
+                                       'INS'='Other';
+                                       'MAU'='Other';
+                                       'GNB'='Other';
+                                       'AZE'='Other';
+                                       'ITA'='Other';
+                                       'SWA'='Other';
+                                       'EGU'='Other'")
+
+data$CountryOrigin2 <- car::recode(data$CountryOrigin,"'SYR'='Syria';
+                                  'IRQ'='Iraq';
+                                   'PAL'='Palestine';
+                                   'ICO'='Cote Ivoire';
+                                   'COD'='Congo RDC';
+                                   'CMR'='Cameroun';
+                                   'MLI'='Mali';
+                                   'GUI'='Guinea';
+                                   'CAR'='Central African Republic';
+                                   'SOM'='Other';
+                                   'AFG'='Other';
+                                   'SUD'='Other';
+                                   'ETH'='Other';
+                                   'ERT'='Other';
+                                   'TUR'='Other';
+                                   'PAK'='Other';
+                                   'YEM'='Yemen';
+                                   'NIG'='Other';
+                                   'BGD'='Other';
+                                   'ARE'='Other';
+                                   'COB'='Other';
+                                   'LBY'='Other';
+                                   'LEB'='Other';
+                                   'CHD'='Other';
+                                   'GBR'='Other';
+                                   'FRA'='Other';
+                                   'JOR'='Other';
+                                   'SEN'='Other';
+                                   'ALG'='Other';
+                                   'GHA'='Other';
+                                   'TUN'='Other';
+                                   'SLE'='Other';
+                                   'LBR'='Other';
+                                   'CHI'='Other';
+                                   'BDI'='Other';
+                                   'MYA'='Other';
+                                   'TOG'='Other';
+                                   'GAM'='Other';
+                                   'NGR'='Other';
+                                   'ANG'='Other';
+                                   'BKF'='Other';
+                                   'BEN'='Other';
+                                   'GAB'='Other';
+                                   'INS'='Other';
+                                   'MAU'='Other';
+                                   'GNB'='Other';
+                                   'AZE'='Other';
+                                   'ITA'='Other';
+                                   'SWA'='Other';
+                                   'EGU'='Other'")
+
+
+prop.table(table(data$CountryOrigin2, useNA = "ifany"))
+prop.table(table(universe$CountryOrigin2, useNA = "ifany"))
+
+### Add Case size stata
+data$Case.size2 <- data$Case.size
+#levels(as.factor(data$Case.size2))
+prop.table(table(data$Case.size, useNA = "ifany"))
+#check <- data[is.na(data$Case.size2),]
+
+#data$Case.size2 <- car::recode(data$Case.size2,"'1'='Case.size.1';
+#                              '2'='Case.size.2';
+#                              '3'='Case.size.3.to.5';
+#                              '4'='Case.size.3.to.5';
+#                              '5'='Case.size.3.to.5';
+#                              '6'='Case.size.6.and.more';
+#                              '7'='Case.size.6.and.more';
+#                              '8'='Case.size.6.and.more';
+#                              '9'='Case.size.6.and.more';
+#                              '10'='Case.size.6.and.more'")
+
+data$Case.size2 <- car::recode(data$Case.size, "'Case.size.2'='Case.size.2.to.5';
+                                'Case.size.3'='Case.size.2.to.5';
+                                'Case.size.4'='Case.size.2.to.5';
+                                'Case.size.5'='Case.size.2.to.5';
+                                'Case.size.6'='Case.size.6.and.more';
+                                'Case.size.7.and.more'='Case.size.6.and.more'")
+
+
+prop.table(table(data$Case.size2, useNA = "ifany"))
+
+universe$Case.size2 <- car::recode(universe$Case.size,"'Case.size.2'='Case.size.2.to.5';
+                                'Case.size.3'='Case.size.2.to.5';
+                                'Case.size.4'='Case.size.2.to.5';
+                                'Case.size.5'='Case.size.2.to.5';
+                                'Case.size.6'='Case.size.6.and.more';
+                                'Case.size.7.and.more'='Case.size.6.and.more'")
+
+prop.table(table(universe$Case.size2, useNA = "ifany"))
+
+data$key2 <- paste(data$CountryOrigin2,data$Case.size2,sep = "-")
+universe$key2 <- paste(universe$CountryOrigin2,universe$Case.size2,sep = "-")
+
+prop.table(table(data$key2, useNA = "ifany"))
+prop.table(table(universe$key2, useNA = "ifany"))
+
+
+data$stratum <- paste(data$CountryOrigin2, data$coal2, data$dem_sex, sep = "/")
+universe$stratum <- paste(universe$CountryOrigin2, universe$coal2, universe$dem_sex, sep = "/")
+
+prop.table(table(data$stratum, useNA = "ifany"))
+prop.table(table(universe$stratum, useNA = "ifany"))
+
+
+
+### reference table for post-stratification
+
+universe.ctr <- as.data.frame(table(universe$CountryOrigin2))
+names(universe.ctr)[1] <- "CountryOrigin2"
+ctr <- levels(as.factor(data$CountryOrigin2))
+
+
+
+universe.stratum <- as.data.frame(table(universe$stratum))
+names(universe.stratum)[1] <- "stratum"
+stratum <- levels(as.factor(data$stratum))
+
+universe.key2 <- as.data.frame(table(universe$key2))
+names(universe.key2)[1] <- "key2"
+key2 <- levels(as.factor(data$key2))
+
+#data.key2 <- as.data.frame(table(data$key2))
+
+cat("create the unweighted survey object\n")
+## create the unweighted survey object
+data.svy.unweighted <- svydesign(ids =  ~ 1,
+                                 data = data)
+
+## Post stratify on those relative frequency
+
+
+
+cat("post stratification on ctr, area of Origin & case size\n")
+## Try post stratification on ctr, area of Origin & case size
+data.svy.rake.ctr.coo.size <- rake(
+  design = data.svy.unweighted,
+  #partial = TRUE, ## Ignore some strata that are absent from sample
+  sample.margins = list( ~ key2),
+  population.margins = list(universe.key2)
+)
+
+
+
+cat("post stratification only on ctr of asylum\n")
+## Try post stratification only on ctr of asylum
+data.svy.rake.ctr <- rake(
+  design = data.svy.unweighted,
+  sample.margins = list( ~ ctr),
+  population.margins = list(universe.ctr)
+)
+
+
+## Use post-stratify
+#postStratify(design, strata, population, partial = FALSE, ...)
+## strata           A formula or data frame of post-stratifying variables
+## population       A table, xtabs or data.frame with population frequencies
+## partial          if TRUE, ignore population strata not present in the sample
+
+
+## sometimes it is necessary to trim weights, if they have grown too large or too small.
+## This will make your data fit less well the population marginal distributions,
+## but inflating a few cases to too much weight, is rarely ever sensible:
+## Perhaps that one person that now counts as 50 is somewhat deranged, or otherwise not representative.
+# So it is best to keep an eye on your weights.
+summary(weights(data.svy.rake.ctr.coo))
+
+cat("Trim weight for Asylum, Origin\n")
+data.svy.rake.trim <- trimWeights(data.svy.rake.ctr,
+                                  lower = 0.3,
+                                  upper = 3,
+                                  strict = TRUE)
+
+proportion.trim <- svyby(  ~ group_intro.goingback,  by =  ~ ctr+COO_L1,  design = data.svy.rake.trim,  FUN = svymean)
+
+#names(proportion.trim)
+proportion.trim$key <- paste(proportion.trim$ctr,proportion.trim$COO_L1,sep="-")
+
+
+## Get original # from universe
+
+##############################################################################
+### Second one with case size in addition
+
+cat("Trim weight for Asylum, Origin & Case size\n")
+
+data.svy.rake.trim2 <- trimWeights(data.svy.rake.ctr.coo.size,
+                                   lower = 0.3,
+                                   upper = 3,
+                                   strict = TRUE)
+
+proportion.trim2 <- svyby(  ~ group_intro.goingback,  by =  ~ ctr+COO_L1+Case.size,  design = data.svy.rake.trim2,  FUN = svymean)
+
+
+
+
+
 
 
 ###########
