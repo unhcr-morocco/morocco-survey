@@ -32,7 +32,7 @@ In order to keep sample size at a reasonable level, the following variables are 
 
  *	Confidence interval: 90, 95% & 99% are tested 
  
- *	Width of Confidence Interval (i.e. margin of error): "±5%", "±3%", "±2%" and "± 1%"  are tested
+ *	Width of Confidence Interval (i.e. margin of error): "+/-5%", "+/-3%", "+/-2%" and "+/- 1%"  are tested
  
  *	Expected value of Attribute: This represents the main attribute of the survey (it coudl be "what the is the percentage of the population that has the capacity to integrate?", "what the is the percentage of the population that is ready to return to its country of origin", "what the is the percentage of the population that is at risk of being poor?). This attribute is often defined based on the output form previous surveys or from expert knowledge. 10%, 30% & 50%  are tested
  
@@ -83,7 +83,7 @@ data <- progres.case.thiscountry
 
 __Confidence level__ represents the probability of the same result if you re-sampled, all other things equal.It is a measure of how certain you are that your sample accurately reflects the population, within its margin of error. Common standards used by researchers are 90%, 95%, and 99%.
 
-__Margin of error -or- Precision __ is a percentage that describes the variability of the estimate: how closely the answer your sample gave is to the "true value" is in your population. The smaller the margin of error is, the closer you are to having the exact answer at a given confidence level. A smaller margin of error means that you must have a larger sample size given the same population. Common standards used by researchers are: ± 5%, ± 3%, ± 2% , ± 1%).
+__Margin of error -or- Precision __ is a percentage that describes the variability of the estimate: how closely the answer your sample gave is to the "true value" is in your population. The smaller the margin of error is, the closer you are to having the exact answer at a given confidence level. A smaller margin of error means that you must have a larger sample size given the same population. Common standards used by researchers are: +/- 5%, +/- 3%, +/- 2% , +/- 1%).
 
 __Proportion of the attribute__ estimates the prevalence or mean & STDev of the key indicator (e.g. 30% return intention). Prevalence is the total number of cases for a variable of interest that is typically binary within a population divided by its total population (for instance intention to return). Mean is the expected value of a variable of interest that is typically continuous within a prescribed range for a given population.
 
@@ -767,7 +767,7 @@ data.sampled <- merge(x=data.sample, y=stratified_sample.srswor, by="ID_unit", a
 ## names(data.sampled)
 data.sampled <- data.sampled[order(data.sampled$Stratum), c( "CaseNo", "phone", "coal1", "coal2",  "coal3","CountryOrigin2", "Prob", "Stratum"  ) ]
 
-kable(data.sampled, row.names = FALSE)
+#kable(data.sampled, row.names = FALSE)
 
 ```
 

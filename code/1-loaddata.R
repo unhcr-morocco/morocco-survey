@@ -84,12 +84,20 @@ household$arrival.document[household$arrival.document == "onlyUNHCR  المفو�
 
 table(household$arrival.document)
 
+
+
+
 ## Clean Unique forms ########
 library(readxl)
 #base <- read_excel("data/base.xlsx")
 #base <- read_excel("data/base.xlsx")
 base <- read_excel("data/base2.xlsx")
+#base2 <- read.csv("data/data2.csv")
+
 #names(base)
+#names(base2)
+#View(base2[ ,c( "X_id", "X_uuid" ,  "case_reachable.caseid" )])
+
 #View(base[ ,c("weight", "_id", "_uuid" ,  "_submission_time", "_index" )])
 
 #names(household)
@@ -388,8 +396,8 @@ data.svy.rake.ctr <- rake(
 
 summary(weights(data.svy.rake.ctr))
 data.svy.rake.ctr.trim <- trimWeights(data.svy.rake.ctr,
-                                      lower = 0.3,
-                                      upper = 3,
+                                      lower = 3,
+                                      upper = 30,
                                       strict = TRUE)
 
 
@@ -401,9 +409,11 @@ prop.table(table(data$key, useNA = "ifany"))
 universe$key <- paste(universe$CountryOrigin2,universe$dem_sex,sep = "-")
 prop.table(table(universe$key, useNA = "ifany"))
 
+teststata <- merge(x = as.data.frame(table(key = universe$key) ) , y = as.data.frame(table(key = data$key)) , by = "key", all.x = TRUE)
+
 universe.key <- table(key = universe$key)
 key <- levels(as.factor(data$key))
-
+data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
 ## Try post stratification only on ctr of Origin
 data.svy.rake.ctr.gender <- rake(
   design = data.svy.unweighted,
@@ -413,8 +423,8 @@ data.svy.rake.ctr.gender <- rake(
 
 summary(weights(data.svy.rake.ctr.gender))
 data.svy.rake.ctr.gender.trim <- trimWeights(data.svy.rake.ctr,
-                                      lower = 0.3,
-                                      upper = 3,
+                                      lower = 3,
+                                      upper = 30,
                                       strict = TRUE)
 
 
@@ -426,7 +436,7 @@ universe$key2 <- paste(universe$CountryOrigin2,universe$Case.size2,sep = "-")
 prop.table(table(universe$key2, useNA = "ifany"))
 
 
-test <- merge(x= as.data.frame(table(key = universe$key2) ) , y = as.data.frame(table(key = data$key2)) , by ="key", all.x = TRUE)
+teststata <- merge(x = as.data.frame(table(key = universe$key2) ) , y = as.data.frame(table(key = data$key2)) , by = "key", all.x = TRUE)
 
 
 ## Rework the key
@@ -449,11 +459,11 @@ universe$key2[universe$key2 == "Mali-Case.size.1"] <- "Mali"
 universe$key2[universe$key2 == "Mali-Case.size.2.to.5"] <- "Mali"
 
 
-data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
-
 
 universe.key2 <- table(key2 = universe$key2)
 key2 <- levels(as.factor(data$key2))
+
+data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
 ## Try post stratification only on ctr of Origin
 data.svy.rake.ctr.casesize <- rake(
   design = data.svy.unweighted,
@@ -461,47 +471,98 @@ data.svy.rake.ctr.casesize <- rake(
   population.margins = list(universe.key2)
 )
 
+summary(weights(data.svy.rake.ctr.casesize))
+data.svy.rake.ctr.casesize.trim <- trimWeights(data.svy.rake.ctr,
+                                             lower = 3,
+                                             upper = 30,
+                                             strict = TRUE)
+
+
 
 
 cat("post stratification on ctr, area of Origin & case size\n")
 ################3
-data$stratum <- paste(data$CountryOrigin2, data$coal2, data$dem_sex, sep = "/")
+data$stratum <- paste(data$CountryOrigin2, data$Case.size2, data$dem_sex, sep = "/")
 prop.table(table(data$stratum, useNA = "ifany"))
 
-universe$stratum <- paste(universe$CountryOrigin2, universe$coal2, universe$dem_sex, sep = "/")
+universe$stratum <- paste(universe$CountryOrigin2, universe$Case.size2, universe$dem_sex, sep = "/")
 prop.table(table(universe$stratum, useNA = "ifany"))
+
+
+teststata <- merge(x = as.data.frame(table(key = universe$stratum) ) , y = as.data.frame(table(key = data$stratum)) , by = "key", all.x = TRUE)
+
+
+data$stratum[data$stratum == "Central African Republic/Case.size.2.to.5/Female"] <- "Central African Republic/Case.size.2.or.more/Female"
+data$stratum[data$stratum == "Central African Republic/Case.size.6.and.more/Female"] <- "Central African Republic/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Central African Republic/Case.size.2.to.5/Female"] <- "Central African Republic/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Central African Republic/Case.size.6.and.more/Female"] <- "Central African Republic/Case.size.2.or.more/Female"
+
+
+data$stratum[data$stratum == "Cote Ivoire/Case.size.2.to.5/Male"] <- "Cote Ivoire/Case.size.2.or.more/Male"
+data$stratum[data$stratum == "Cote Ivoire/Case.size.6.and.more/Male"] <- "Cote Ivoire/Case.size.2.or.more/Male"
+universe$stratum[universe$stratum == "Cote Ivoire/Case.size.2.to.5/Male"] <- "Cote Ivoire/Case.size.2.or.more/Male"
+universe$stratum[universe$stratum == "Cote Ivoire/Case.size.6.and.more/Male"] <- "Cote Ivoire/Case.size.2.or.more/Male"
+
+
+data$stratum[data$stratum == "Other/Case.size.6.and.more/Female"] <- "Other/Case.size.6.and.more"
+data$stratum[data$stratum == "Other/Case.size.6.and.more/Male"] <- "Other/Case.size.6.and.more"
+universe$stratum[universe$stratum == "Other/Case.size.6.and.more/Female"] <- "Other/Case.size.6.and.more"
+universe$stratum[universe$stratum == "Other/Case.size.6.and.more/Male"] <- "Other/Case.size.6.and.more"
+
+data$stratum[data$stratum == "Mali/Case.size.1/Female"] <- "Mali/Case.size.2.or.more/Female"
+data$stratum[data$stratum == "Mali/Case.size.2.to.5/Female"] <- "Mali/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Mali/Case.size.1/Female"] <- "Mali/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Mali/Case.size.2.to.5/Female"] <- "Mali/Case.size.2.or.more/Female"
+
+
+data$stratum[data$stratum == "Guinea/Case.size.1/Male"] <- "Guinea/Case.size.1.to.5/Male"
+data$stratum[data$stratum == "Guinea/Case.size.2.to.5/Male"] <- "Guinea/Case.size.1.to.5/Male"
+universe$stratum[universe$stratum == "Guinea/Case.size.1/Male"] <- "Guinea/Case.size.1.to.5/Male"
+universe$stratum[universe$stratum == "Guinea/Case.size.2.to.5/Male"] <- "Guinea/Case.size.1.to.5/Male"
+
+data$stratum[data$stratum == "Guinea/Case.size.2.to.5/Female"] <- "Guinea/Case.size.2.or.more/Female"
+data$stratum[data$stratum == "Guinea/Case.size.6.and.more/Female"] <- "Guinea/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Guinea/Case.size.2.to.5/Female"] <- "Guinea/Case.size.2.or.more/Female"
+universe$stratum[universe$stratum == "Guinea/Case.size.6.and.more/Female"] <- "Guinea/Case.size.2.or.more/Female"
+
+data$stratum[data$stratum == "Iraq/Case.size.1/Female"] <- "Iraq/Case.size.1"
+data$stratum[data$stratum == "Iraq/Case.size.1/Male"] <- "Iraq/Case.size.1"
+universe$stratum[universe$stratum == "Iraq/Case.size.1/Female"] <- "Iraq/Case.size.1"
+universe$stratum[universe$stratum == "Iraq/Case.size.1/Male"] <- "Iraq/Case.size.1"
+
+
 
 universe.stratum <- table(stratum = universe$stratum)
 stratum  <- levels(as.factor(data$stratum ))
 
+
+data.svy.unweighted <- svydesign(ids =  ~ 1,  data = data)
+
 ## Try post stratification on ctr, area of Origin & case size
-data.svy.rake.ctr.coa.gender <- rake(
+data.svy.rake.ctr.casesize.gender <- rake(
   design = data.svy.unweighted,
   sample.margins = list( ~ stratum),
   population.margins = list(universe.stratum)
 )
 
 
+summary(weights(data.svy.rake.ctr.casesize))
+data.svy.rake.ctr.casesize.gender.trim <- trimWeights(data.svy.rake.ctr.casesize.gender,
+                                               lower = 3,
+                                               upper = 30,
+                                               strict = TRUE)
 
+## Family Profile #################
 
+data$familyprofile2 <- as.character(data$familyprofile)
+data$familyprofile2[data$familyprofile2 == "couple.no.kids"] <- "case.without.minors"
+data$familyprofile2[data$familyprofile2 == "non.nuclear.or.adult.dependant"] <- "case.without.minors"
+prop.table(table(data$familyprofile2, useNA = "ifany"))
 
-
-
-
-
-
-## Get original # from universe
-
-##############################################################################
-### Second one with case size in addition
-
-cat("Trim weight for Asylum, Origin & Case size\n")
-
-data.svy.rake.trim2 <- trimWeights(data.svy.rake.ctr.coo.size,
-                                   lower = 0.3,
-                                   upper = 3,
-                                   strict = TRUE)
-
+universe$familyprofile2 <- as.character(universe$familyprofile)
+universe$familyprofile2[universe$familyprofile2 == "couple.no.kids"] <- "case.without.minors"
+universe$familyprofile2[universe$familyprofile2 == "non.nuclear.or.adult.dependant"] <- "case.without.minors"
+prop.table(table(universe$familyprofile2, useNA = "ifany"))
 
 
 ###########
