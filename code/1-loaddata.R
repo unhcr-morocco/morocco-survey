@@ -125,6 +125,18 @@ nrow(as.data.frame(unique(baseclean$case_reachable.caseid2)))
 nrow(as.data.frame(unique(baseclean$Individualid)))
 nrow(as.data.frame(unique(baseclean$caseidconcat)))
 
+## Duplicated uuid!! to be removed
+nrow(as.data.frame(unique(baseclean$X_uuid)))
+
+baseclean$duplicateduuid <- ""
+baseclean[duplicated(baseclean$X_uuid), c( "duplicateduuid")] <- "duplicated"
+#table(baseclean$$duplicateuuid)
+## Check if we have differnet head of household
+baseclean <- baseclean[ baseclean$duplicateduuid != "duplicated" , ]
+
+
+#nrow(as.data.frame(unique(household$X_uuid)))
+
 #household.remove <- merge(x = baseclean, y = household, by = "X_uuid" , all.y = TRUE)
 #household.remove <- household.remove[is.na(household.remove$case_reachable.caseid2), ]
 household2 <- merge(x = baseclean, y = household, by = "X_uuid", all.x = TRUE)
@@ -148,7 +160,7 @@ data.clean <- household2[ household2$duplicatedid != "duplicated" , ]
 
 ## Save data to be used for post-stratification
 write.csv(data.clean,"data/dataclean.csv", row.names = FALSE, na = "")
-
+source("code/1-post-stratify.R")
 
 ## Re-encoding data now based on the dictionnary -- ##############################
 ## the xlsform dictionnary can be adjusted this script re-runned till satisfaction

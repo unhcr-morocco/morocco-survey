@@ -133,6 +133,11 @@ for (i in 1:nrow(chapters) )
   ## TO DO: Use config file to load the different frame
   cat("household <- read.csv(paste0(mainDirroot,\"/data/data2.csv\"), encoding = \"UTF-8\", na.strings = \"\")", file = chapter.name , sep = "\n", append = TRUE)
 
+
+  cat("weight <- read.csv(paste0(mainDirroot,\"/data/weight.csv\"), encoding = \"UTF-8\", na.strings = \"\")", file = chapter.name , sep = "\n", append = TRUE)
+  cat("household <- merge (x = household, y = weight, by = \"X_uuid\")", file = chapter.name , sep = "\n", append = TRUE)
+
+
   cat("\n", file = chapter.name , sep = "\n", append = TRUE)
   cat("## label Variables", file = chapter.name , sep = "\n", append = TRUE)
   cat("household <- kobo_label(household , dico)", file = chapter.name , sep = "\n", append = TRUE)
@@ -157,10 +162,10 @@ for (i in 1:nrow(chapters) )
 
   ## To do use configuration file to weight the data #######
   cat("\n", file = chapter.name , sep = "\n", append = TRUE)
-  cat("## Create weighted survey object", file = chapter.name , sep = "\n", append = TRUE)
+ # cat("## Create weighted survey object", file = chapter.name , sep = "\n", append = TRUE)
 
   ## with strata
-  #cat("household.survey <- svydesign(id=~1, strata= ~ RecordCategory ,check.strata = TRUE,  data = household,  weights = ~ WeightingCoefficient  )", file = chapter.name , sep = "\n", append = TRUE)
+  cat("household.survey <- svydesign(id=~1, strata= ~ stratum ,check.strata = TRUE,  data = household,  weights = ~ WeightingCoefficient  )", file = chapter.name , sep = "\n", append = TRUE)
 
   ## with clusters
   #cat("household.survey <- svydesign(ids = ~ section1.location.district ,  data = household,  weights = ~ Normalized.Weight ,  fpc = ~fpc )", file = chapter.name , sep = "\n", append = TRUE)

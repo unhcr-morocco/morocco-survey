@@ -1,5 +1,5 @@
 ######## load extract from proGres for poststratification\
-rm(list = ls())
+#rm(list = ls())
 
 ## Load all required packages         #############################################
 source("code/0-packages.R")
@@ -476,13 +476,17 @@ data.svy.rake.ctr.casesize.gender <- rake(
   population.margins = list(universe.stratum)
 )
 
-str(data.svy.rake.ctr.casesize.gender)
+#str(data.svy.rake.ctr.casesize.gender)
 
-summary(weights(data.svy.rake.ctr.casesize))
-#data.svy.rake.ctr.casesize.gender.trim <- trimWeights(data.svy.rake.ctr.casesize.gender,
-#                                      lower = 3, upper = 30,  strict = TRUE)
+summary(weights(data.svy.rake.ctr.casesize.gender))
+#data.svy.rake.ctr.casesize.gender.trim <- trimWeights(data.svy.rake.ctr.casesize.gender, lower = 3, upper = 30,  strict = TRUE)
 
-weight <-
+weight <- as.data.frame(cbind(weights(data.svy.rake.ctr.casesize.gender), as.character(data$X_uuid), data$stratum))
+names(weight)[1] <- "WeightingCoefficient"
+names(weight)[2] <- "X_uuid"
+names(weight)[3] <- "stratum"
 
-str(data.svy.rake.ctr.casesize)
-data.svy.rake.ctr.casesize@popStrata
+write.csv(weight,"data/weight.csv", row.names = FALSE, na = "")
+
+#str(data.svy.rake.ctr.casesize)
+#data.svy.rake.ctr.casesize@popStrata
